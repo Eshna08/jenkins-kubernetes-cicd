@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -11,15 +12,16 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t devops-website:v2 .'
+                sh 'docker build -t devops-website:build-${BUILD_NUMBER} .'
             }
         }
 
         stage('Load Image into Kubernetes') {
             steps {
                 sh '''
-                    docker save devops-website:v2 -o website.tar
+                    docker save devops-website:build-${BUILD_NUMBER} -o website.tar
                     docker exec -i minikube ctr -n k8s.io images import - < website.tar
+                    rm -f website.tar
                 '''
             }
         }
@@ -29,7 +31,7 @@ pipeline {
                 sh '''
                     /snap/bin/kubectl --kubeconfig=/var/lib/jenkins/.kube/config \
                     set image deployment/devops-website \
-                    devops-website=devops-website:v2
+                    devops-website=devops-website:build-${BUILD_NUMBER}
 
                     /snap/bin/kubectl --kubeconfig=/var/lib/jenkins/.kube/config \
                     rollout status deployment/devops-website
